@@ -1,0 +1,7 @@
+-r style.in
+-r typing.in
+pip-compile-multi
+opencv-contrib-python
+numpy
+matplotlib
+pillow
