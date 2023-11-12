@@ -4,13 +4,10 @@ Pixel Craft's Command Line API
 
 Author: Akshay Mestry <xa@mes3.dev>
 Created on: Monday, October 16 2023
-Last updated on: Monday, October 16 2023
+Last updated on: Friday, November 10 2023
 
-Pixel Craft's's command line utilities.
-
-The ``pixel_craft.cli`` module hosts the main argument parser object
-which allows user to interact with Pixel Craft's APIs over the command
-line.
+This module hosts the main argument parser object which allows user to
+interact with Pixel Craft's APIs over the command line.
 
 Usage Example::
 ---------------
@@ -18,6 +15,7 @@ Usage Example::
     .. code-block:: console
 
         $ python3 -c "import pixel_craft; pixel_craft.cli.main()" --help
+
 """
 
 from __future__ import annotations
