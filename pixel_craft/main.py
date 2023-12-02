@@ -474,9 +474,3 @@ class Histogram(Image):
         plt.ylabel(kwargs.pop("ylabel", "Frequency"), fontname="Helvetica")
         plt.show()
         return cls
-
-
-path = "/Users/akshay/Developer/masters/4_quarter/csc_481/2/Lena.png"
-
-# image = Image(path)
-# image.grayscale().prewitt().show()
