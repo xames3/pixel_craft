@@ -61,7 +61,6 @@ class ImageMeta(type):
 class Image(metaclass=ImageMeta):
     """Primary image class for loading, saving and displaying the image."""
 
-    _help: str
     __supported_operations: _SupportedOperations = {}
 
     def __init_subclass__(cls) -> None:
@@ -210,12 +209,6 @@ class Grayscale(Image):
         information lost.
     """
 
-    _help: str = (
-        "Convert the source image from its current color space to grayscale. "
-        "In case of a transformation to-from RGB color space, the order of "
-        "the channels should be specified explicitly (RGB or BGR)."
-    )
-
     @classmethod
     def __call__(cls, **kwargs: t.Any) -> type[Image]:
         """Convert source image to grayscale."""
@@ -226,8 +219,6 @@ class Grayscale(Image):
 
 class Invert(Image):
     """Class for inverting the image."""
-
-    _help: str = "Create a digital negative of the source image."
 
     @classmethod
     def __call__(cls, **kwargs) -> type[t.Self]:
@@ -240,8 +231,6 @@ class Invert(Image):
 
 class StandardBlur(Image):
     """Class for blurring image using normalized box filter."""
-
-    _help: str = "Blur the source image using normalized box filter."
 
     @classmethod
     def __call__(cls, **kwargs: t.Any) -> type[Image]:
@@ -263,8 +252,6 @@ class StandardBlur(Image):
 
 class GaussianBlur(Image):
     """Class for blurring image using Gaussian filter."""
-
-    _help: str = "Blur the source image using a Gaussian filter."
 
     @classmethod
     def __call__(cls, **kwargs: t.Any) -> type[Image]:
@@ -290,8 +277,6 @@ class GaussianBlur(Image):
 
 class Canny(Image):
     """Class for detecting edges using Canny Edge Detection."""
-
-    _help: str = "Finds edges in an image using the Canny algorithm."
 
     @classmethod
     def __call__(cls, **kwargs: t.Any) -> type[Image]:
@@ -331,8 +316,6 @@ class Canny(Image):
 
 class Sobel(Image):
     """Class for detecting edges using Sobel operator/filter."""
-
-    _help: str = "Finds edges in an image using Sobel operator."
 
     @classmethod
     def __call__(cls, **kwargs: t.Any) -> type[Image]:
@@ -399,8 +382,6 @@ class Sobel(Image):
 class Prewitt(Image):
     """Class for detecting edges using Prewitt operator/filter."""
 
-    _help: str = "Finds edges in an image using Prewitt operator."
-
     @classmethod
     def __call__(cls, **kwargs: t.Any) -> type[Image]:
         """Finds edges in an image using Prewitt operator.
@@ -450,8 +431,6 @@ class Prewitt(Image):
 
 class Histogram(Image):
     """Class for representing image as Histogram."""
-
-    _help: str = "Represent image as histogram."
 
     @classmethod
     def __call__(cls, **kwargs: t.Any) -> type[Image]:
