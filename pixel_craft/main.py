@@ -10,10 +10,13 @@ Last updated on: Saturday, November 11 2023
 from __future__ import annotations
 
 import typing as t
+import warnings
 
 import cv2
+import matplotlib.colors as mcolors
 import numpy as np
 import requests
+from matplotlib import pyplot as plt
 
 from .exceptions import ImageReadingError
 from .utils import History
@@ -26,6 +29,18 @@ if t.TYPE_CHECKING:
 
 _Image = type["Image"]
 _SupportedOperations = dict[str, _Image]
+
+plt.style.use("seaborn-v0_8-whitegrid")
+plt.rcParams["figure.dpi"] = 200
+
+axes = plt.gca()
+axes.spines["top"].set_visible(False)
+axes.spines["right"].set_visible(False)
+
+b = mcolors.TABLEAU_COLORS["tab:blue"]
+g = mcolors.TABLEAU_COLORS["tab:green"]
+r = mcolors.TABLEAU_COLORS["tab:red"]
+n = mcolors.TABLEAU_COLORS["tab:gray"]
 
 
 class ImageMeta(type):
@@ -46,6 +61,7 @@ class ImageMeta(type):
 class Image(metaclass=ImageMeta):
     """Primary image class for loading, saving and displaying the image."""
 
+    _help: str
     __supported_operations: _SupportedOperations = {}
 
     def __init_subclass__(cls) -> None:
@@ -140,7 +156,7 @@ class Image(metaclass=ImageMeta):
             NOT counted.
         """
         title = kwargs.pop("title", "Output Window")
-        size = kwargs.get("size")
+        size = kwargs.pop("size", None)
         cv2.namedWindow(title, cv2.WINDOW_KEEPRATIO)
         cv2.imshow(title, cls.image)
         if size:
@@ -176,6 +192,8 @@ class Image(metaclass=ImageMeta):
             combined.append(image)
         cls.history.image = cv2.hconcat(combined)
         title = kwargs.pop("title", " v/s ".join(map(str.title, args)))
+        if "size" in kwargs:
+            warnings.warn("Using size while comparing isn't recommended")
         cls.show(title=title, **kwargs)
 
 
@@ -192,6 +210,12 @@ class Grayscale(Image):
         information lost.
     """
 
+    _help: str = (
+        "Convert the source image from its current color space to grayscale. "
+        "In case of a transformation to-from RGB color space, the order of "
+        "the channels should be specified explicitly (RGB or BGR)."
+    )
+
     @classmethod
     def __call__(cls, **kwargs: t.Any) -> type[Image]:
         """Convert source image to grayscale."""
@@ -202,6 +226,8 @@ class Grayscale(Image):
 
 class Invert(Image):
     """Class for inverting the image."""
+
+    _help: str = "Create a digital negative of the source image."
 
     @classmethod
     def __call__(cls, **kwargs) -> type[t.Self]:
@@ -214,6 +240,8 @@ class Invert(Image):
 
 class StandardBlur(Image):
     """Class for blurring image using normalized box filter."""
+
+    _help: str = "Blur the source image using normalized box filter."
 
     @classmethod
     def __call__(cls, **kwargs: t.Any) -> type[Image]:
@@ -236,6 +264,8 @@ class StandardBlur(Image):
 class GaussianBlur(Image):
     """Class for blurring image using Gaussian filter."""
 
+    _help: str = "Blur the source image using a Gaussian filter."
+
     @classmethod
     def __call__(cls, **kwargs: t.Any) -> type[Image]:
         """Blurs the source image using a Gaussian filter.
@@ -246,14 +276,22 @@ class GaussianBlur(Image):
         :param kernel: Tuple of Gaussian kernel size. The kernel's width
                        and height can differ but they both must be
                        positive and odd.
+        :param anchor: Tuple of point value, defaults to ``(-1, -1)``.
+                       This means the anchor is at the kernel's center.
         """
-        cls.history.image = cv2.blur(cls.image, ksize=kwargs.pop("kernel"))
+        cls.history.image = cv2.blur(
+            cls.image,
+            ksize=kwargs.pop("kernel"),
+            anchor=kwargs.pop("anchor", (-1, -1)),
+        )
         cls.history.gaussian_blur = cls.history.image
         return cls
 
 
 class Canny(Image):
     """Class for detecting edges using Canny Edge Detection."""
+
+    _help: str = "Finds edges in an image using the Canny algorithm."
 
     @classmethod
     def __call__(cls, **kwargs: t.Any) -> type[Image]:
@@ -276,7 +314,6 @@ class Canny(Image):
                          the image gradient magnitude, or whether the
                          default L1 norm is enough for the operation,
                          defaults to ``False``.
-        :returns: An output edge map, which has the same size as image.
 
         .. seealso::
             [1] http://en.wikipedia.org/wiki/Canny_edge_detector
@@ -290,3 +327,156 @@ class Canny(Image):
         )
         cls.history.canny = cls.history.image
         return cls
+
+
+class Sobel(Image):
+    """Class for detecting edges using Sobel operator/filter."""
+
+    _help: str = "Finds edges in an image using Sobel operator."
+
+    @classmethod
+    def __call__(cls, **kwargs: t.Any) -> type[Image]:
+        """Finds edges in an image using Sobel operator.
+
+        The Sobel operator, sometimes called the ``Sobel-Feldman``
+        operator or Sobel filter, is used in image processing and
+        computer vision, particularly within edge detection algorithms
+        where it creates an image emphasising edges.
+
+        The operator uses two 3x3 kernels which are convolved with the
+        original image to calculate approximations of the derivatives -
+        one for horizontal changes, and one for vertical. More formally,
+        speaking, since the intensity function of a digital image is
+        only known at discrete points, derivatives of this function
+        cannot be defined unless we assume that there is an underlying
+        differentiable intensity function that has been sampled at the
+        image points.
+
+        With some additional assumptions, the derivative of the
+        continuous intensity function can be computed as a function on
+        the sampled intensity function, i.e. the digital image. It turns
+        out that the derivatives at any particular point are functions
+        of the intensity values at virtually all image points.
+
+        However, approximations of these derivative functions can be
+        defined at lesser or larger degrees of accuracy. The Sobel
+        Operator is a discrete differentiation operator. It computes an
+        approximation of the gradient of an image intensity function.
+
+        :param image_depth: Output image depth, defaults to ``-1``.
+        :param kernel_h: Horizontal kernel numpy array, defaults to
+                         ``[[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]]``.
+        :param kernel_v: Vertical kernel numpy array, defaults to
+                         ``[[-1, -2, -1], [0, 0, 0], [1, 2, 1]]``.
+        :param anchor: Tuple of point value, defaults to ``(-1, -1)``.
+                       This means the anchor is at the kernel's center.
+        :param border_type: Pixel extrapolation method, defaults to
+                            ``4``.
+
+        .. seealso::
+            [1] https://en.wikipedia.org/wiki/Sobel_operator
+            [2] https://shorturl.at/glnEM
+            [3] https://shorturl.at/jkuG0
+        """
+        cls.history.image = cv2.filter2D(
+            cls.image,
+            ddepth=kwargs.pop("image_depth", -1),
+            kernel=(
+                kwargs.pop(
+                    "kernel_h", np.array([[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]])
+                )
+                + kwargs.pop(
+                    "kernel_v", np.array([[-1, -2, -1], [0, 0, 0], [1, 2, 1]])
+                )
+            ),
+            anchor=kwargs.pop("anchor", (-1, -1)),
+            borderType=kwargs.pop("border_type", 4),
+        )
+        cls.history.sobel = cls.history.image
+        return cls
+
+
+class Prewitt(Image):
+    """Class for detecting edges using Prewitt operator/filter."""
+
+    _help: str = "Finds edges in an image using Prewitt operator."
+
+    @classmethod
+    def __call__(cls, **kwargs: t.Any) -> type[Image]:
+        """Finds edges in an image using Prewitt operator.
+
+        The Prewitt operator is used in image processing, particularly
+        within edge detection algorithms. Technically, it is a discrete
+        differentiation operator, computing an approximation of the
+        gradient of the image intensity function. At each point in the
+        image, the result of the Prewitt operator is either the
+        corresponding gradient vector or the norm of this vector.
+
+        The Prewitt operator is based on convolving the image with a
+        small, separable, and integer valued filter in horizontal and
+        vertical directions and is therefore relatively inexpensive in
+        terms of computations like Sobel.
+
+        :param image_depth: Output image depth, defaults to ``-1``.
+        :param kernel_h: Horizontal kernel numpy array, defaults to
+                         ``[[-1, 0, 1], [-1, 0, 1], [-1, 0, 1]]``.
+        :param kernel_v: Vertical kernel numpy array, defaults to
+                         ``[[-1, -1, -1], [0, 0, 0], [1, 1, 1]]``.
+        :param anchor: Tuple of point value, defaults to ``(-1, -1)``.
+                       This means the anchor is at the kernel's center.
+        :param border_type: Pixel extrapolation method, defaults to
+                            ``4``.
+
+        .. seealso::
+            [1] https://en.wikipedia.org/wiki/Prewitt_operator
+        """
+        cls.history.image = cv2.filter2D(
+            cls.image,
+            ddepth=kwargs.pop("image_depth", -1),
+            kernel=(
+                kwargs.pop(
+                    "kernel_h", np.array([[-1, 0, 1], [-1, 0, 1], [-1, 0, 1]])
+                )
+                + kwargs.pop(
+                    "kernel_v", np.array([[-1, -1, -1], [0, 0, 0], [1, 1, 1]])
+                )
+            ),
+            anchor=kwargs.pop("anchor", (-1, -1)),
+            borderType=kwargs.pop("border_type", 4),
+        )
+        cls.history.prewitt = cls.history.image
+        return cls
+
+
+class Histogram(Image):
+    """Class for representing image as Histogram."""
+
+    _help: str = "Represent image as histogram."
+
+    @classmethod
+    def __call__(cls, **kwargs: t.Any) -> type[Image]:
+        """Show histogram plot using Matplotlib."""
+        channels = (n,) if len(cls.image.shape) < 3 else (b, g, r)
+        for idx, channel in enumerate(channels):
+            x = np.arange(kwargs.pop("size", 256))
+            y = cv2.calcHist(
+                [cls.image],
+                channels=[idx],
+                mask=kwargs.pop("mask", None),
+                histSize=[kwargs.pop("size", 256)],
+                ranges=kwargs.pop("ranges", [0, 256]),
+            ).flatten()
+            plt.plot(x, y, alpha=kwargs.pop("alpha", 0.7), color=channel)
+            plt.fill_between(
+                x, y, alpha=kwargs.pop("fill", 0.3), color=channel
+            )
+        plt.xlabel(kwargs.pop("xlabel", "Levels"), fontname="Helvetica")
+        plt.ylabel(kwargs.pop("ylabel", "Frequency"), fontname="Helvetica")
+        plt.show()
+        return cls
+
+
+path = "/Users/akshay/Developer/masters/4_quarter/csc_481/2/Lena.png"
+
+# image = Image(path)
+# image.grayscale().prewitt().show()
