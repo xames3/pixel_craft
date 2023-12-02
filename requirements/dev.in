@@ -1,7 +1,8 @@
 -r style.in
 -r typing.in
-pip-compile-multi
-opencv-contrib-python
-numpy
 matplotlib
+numpy
+opencv-contrib-python
 pillow
+pip-compile-multi
+requests
